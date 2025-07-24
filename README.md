@@ -1,4 +1,4 @@
-# Numeracion Pperadores
+# Numeracion Operadores
 Python utility script to find public phone operator information from a phone number (Spain only).
 
 The script searches the database from Comisión Nacional de los Mercados y la Competencia (CNMC):
