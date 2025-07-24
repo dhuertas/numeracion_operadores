@@ -63,18 +63,6 @@ def main(opts):
         print("Numbering database not found")
         return
 
-    response = urlopen(Request(url=numbering_url, headers={'User-Agent': 'Mozilla/5.0'}))
-    if response.getcode() == 200:
-        numbering = json.loads(response.read().decode('utf-8'))
-    else:
-        print("failed to get numbering db")
-
-        # Alternatively, download the file externaly and enable the comment code below
-        #
-        # with open(numbering_filepath, 'r') as file:
-        #     numbering = json.load(file)
-        return
-
     ndc_db = {}
     for n in numbering:
 
