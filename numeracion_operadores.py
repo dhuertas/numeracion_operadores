@@ -1,7 +1,28 @@
 from urllib.request import Request, urlopen
 import argparse
 import json
+import os
 import pprint
+
+numbering_filepath = "./busqueda_numeracion.json"
+
+numbering_url = "https://numeracionyoperadores.cnmc.es/api/numeracion/get_busqueda_numeracion"
+
+def download_numbering(save: bool = False) -> dict:
+
+    response = urlopen(Request(url=numbering_url, headers={'User-Agent': 'Mozilla/5.0'}))
+    if response.getcode() != 200:
+        print("failed downloading operator numbering database")
+        return {}
+
+    numbering = json.loads(response.read().decode('utf-8'))
+
+    if save:
+        with open(numbering_filepath, "w", encoding="utf-8") as file:
+            json.dump(numbering, file)
+
+    return numbering
+
 
 def main(opts):
     """
@@ -12,17 +33,37 @@ def main(opts):
     - https://avance.digital.gob.es/es-ES/Servicios/Numeracion/Documents/Guia_Numeracion.pdf
 
     """
-    blocked_numbers = []
+    search_numbers = []
     numbering = {}
 
     if opts.number_list:
         with open(opts.number_list, "r") as file:
-            blocked_numbers = [line.rstrip() for line in file]
+            search_numbers = [line.rstrip() for line in file]
 
     if opts.number:
-        blocked_numbers.append(str(opts.number))
+        search_numbers.append(str(opts.number))
 
-    response = urlopen(Request(url='https://numeracionyoperadores.cnmc.es/api/numeracion/get_busqueda_numeracion', headers={'User-Agent': 'Mozilla/5.0'}))
+    if not search_numbers:
+        print("No numbers to search")
+        return
+
+    if opts.no_cache:
+        # Using no-cache
+        numbering = download_numbering()
+    else:
+        if os.path.isfile(numbering_filepath):
+            # Use existing file
+            with open(numbering_filepath, "r") as file:
+                numbering = json.load(file)
+        else:
+            # Download file and save
+            numbering = download_numbering(save=True)
+
+    if not numbering:
+        print("Numbering database not found")
+        return
+
+    response = urlopen(Request(url=numbering_url, headers={'User-Agent': 'Mozilla/5.0'}))
     if response.getcode() == 200:
         numbering = json.loads(response.read().decode('utf-8'))
     else:
@@ -30,7 +71,7 @@ def main(opts):
 
         # Alternatively, download the file externaly and enable the comment code below
         #
-        # with open('busqueda_numeracion.json', 'r') as file:
+        # with open(numbering_filepath, 'r') as file:
         #     numbering = json.load(file)
         return
 
@@ -46,7 +87,7 @@ def main(opts):
         if segment:
             ndc_db[destination_code].add(segment)
 
-    for number in blocked_numbers:
+    for number in search_numbers:
 
         found_dc = None
         found_segment = None
@@ -82,5 +123,7 @@ if __name__ == "__main__":
     input_args = parser.add_mutually_exclusive_group()
     input_args.add_argument("-n", "--number", type=str, help="The phone number to search")
     input_args.add_argument("-l", "--number-list", type=str, help="Text file containing a list of numbers to search (one number per line)")
+
+    parser.add_argument("-nc", "--no-cache", action="store_true", help="Do not use cached file")
 
     main(parser.parse_args())
